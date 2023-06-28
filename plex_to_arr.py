@@ -2,10 +2,18 @@ import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
-PLEX_TOKEN = ""
-RADARR_API_KEY = ""
-RADARR_URL = ""
-RADARR_ROOT_FOLDER = ""
+# Load environment variables from .env file
+load_dotenv()
+
+# Retrieve API keys from environment variables
+PLEX_TOKEN = os.getenv("PLEX_TOKEN")
+RADARR_API_KEY = os.getenv("RADARR_API_KEY")
+TMDB_API_KEY = ("TMDB_API_KEY")
+
+
+RADARR_URL = "https://movies.niftytv.xyz/api/v3"
+RADARR_ROOT_FOLDER = "/media/Downloads/upload-folder/Movies2"
+
 
 def get_quality_profile_id():
     radarr_url = "https://movies.niftytv.xyz/api/v3"
@@ -33,7 +41,6 @@ def fetch_plex_watchlist():
 
 def fetch_tmdb_id(title):
     print("Fetching TMDB ID...")
-    TMDB_API_KEY = "614ea6754d1fa006b1f8957fb9b5b3de"
     TMDB_SEARCH_URL = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={title}"
     response = requests.get(TMDB_SEARCH_URL)
     if response.status_code == 200:
