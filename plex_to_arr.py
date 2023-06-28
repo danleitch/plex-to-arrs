@@ -1,6 +1,8 @@
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+import os
 
 # Load environment variables from .env file
 load_dotenv()
@@ -8,7 +10,7 @@ load_dotenv()
 # Retrieve API keys from environment variables
 PLEX_TOKEN = os.getenv("PLEX_TOKEN")
 RADARR_API_KEY = os.getenv("RADARR_API_KEY")
-TMDB_API_KEY = ("TMDB_API_KEY")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
 
 RADARR_URL = "https://movies.niftytv.xyz/api/v3"
