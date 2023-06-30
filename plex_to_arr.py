@@ -12,10 +12,10 @@ RADARR_API_KEY = os.getenv("RADARR_API_KEY")
 SONARR_API_KEY = os.getenv("SONARR_API_KEY")
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
-RADARR_URL = "https://movies.niftytv.xyz/api/v3"
-SONARR_URL = "https://tv.niftytv.xyz/api/v3"
-RADARR_ROOT_FOLDER = "/media/Downloads/upload-folder/Movies2"
-SONARR_ROOT_FOLDER = "/media/Downloads/upload-folder/TVShows"
+RADARR_URL = "http://192.168.1.15:7878/api/v3"
+SONARR_URL = "http://192.168.1.15:8989/api/v3"
+RADARR_ROOT_FOLDER = "/config"
+SONARR_ROOT_FOLDER = "/config"
 
 # Language Profile ID for Sonarr
 LANGUAGE_PROFILE = 1  # Adjust this value based on your Sonarr configuration
@@ -45,7 +45,6 @@ def fetch_plex_watchlist():
     return root.findall('Directory') + root.findall('Video')
 
 def fetch_tmdb_id(title, media_type):
-    print(f"Fetching TMDB ID for {media_type} '{title}'...")
     if media_type == "show":
         search_url = f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_API_KEY}&query={title}"
     else:
@@ -76,8 +75,6 @@ def add_to_radarr(tmdb_id, title):
         }
     }
     radarr_add_url = f"{RADARR_URL}/movie?apikey={RADARR_API_KEY}"
-    print("Request Payload:")
-    print(payload)
     response = requests.post(radarr_add_url, json=payload)
     if response.status_code == 201:
         print(f"Added movie '{title}' to Radarr successfully.")
@@ -88,31 +85,40 @@ def add_to_radarr(tmdb_id, title):
         except (KeyError, IndexError):
             print(f"Failed to add movie '{title}' to Radarr. Status Code: {response.status_code}")
 
-def add_to_sonarr(tmdb_id, title):
-    print(f"Adding show '{title}' to Sonarr...")
-    payload = {
-        "title": title,
-        "qualityProfileId": int(QUALITY_PROFILE),
-        "languageProfileId": int(LANGUAGE_PROFILE),  # Include the language profile ID
-        "tvdbId": tmdb_id,
-        "rootFolderPath": SONARR_ROOT_FOLDER,
-        "monitored": True,
-        "addOptions": {
-            "searchForMissingEpisodes": True
+def search_and_add_series(search_term):
+    search_url = f"{SONARR_URL}/series/lookup"
+    headers = {"X-Api-Key": SONARR_API_KEY}
+    params = {"term": search_term}
+    
+    response = requests.get(search_url, headers=headers, params=params)
+    if response.status_code == 200:
+        results = response.json()
+        if results:
+            series = results[0]  # Assuming the first search result is the desired series
+            series_id = series["tvdbId"]
+            add_series_url = f"{SONARR_URL}/series"
+            payload = {
+            "title": search_term,
+            "qualityProfileId": int(QUALITY_PROFILE),
+            "languageProfileId": int(LANGUAGE_PROFILE),  
+            "tvdbId": series_id,
+            "rootFolderPath": SONARR_ROOT_FOLDER,
+            "monitored": True,
+            "addOptions": {
+                "searchForMissingEpisodes": True
+            }
         }
-    }
-    sonarr_add_url = f"{SONARR_URL}/series?apikey={SONARR_API_KEY}"
-    print("Request Payload:")
-    print(payload)
-    response = requests.post(sonarr_add_url, json=payload)
-    if response.status_code == 201:
-        print(f"Added show '{title}' to Sonarr successfully.")
+            
+            response = requests.post(add_series_url, headers=headers, json=payload)
+            if response.status_code == 201:
+                print(f"Added series '{series['title']}' to Sonarr successfully.")
+            else:
+                print(f"Failed to add series '{series['title']}' to Sonarr. ")
+        else:
+            print("No series found for the search term.")
     else:
-        try:
-            error_message = response.json()[0]['errorMessage']
-            print(f"Failed to add show '{title}' to Sonarr. Error: {error_message}")
-        except (KeyError, IndexError):
-            print(f"Failed to add show '{title}' to Sonarr. Status Code: {response.status_code}")
+        print("Failed to perform series search.")
+
 
 def main():
     print("Starting script...")
@@ -122,14 +128,14 @@ def main():
     for item in watchlist:
         title = item.get('title')
         media_type = item.get('type')
-        # if media_type == "show":
-            # tmdb_id = fetch_tmdb_id(title, media_type)
-            # if tmdb_id is not None:
-            #     add_to_sonarr(tmdb_id, title)
         if media_type == "movie":
             tmdb_id = fetch_tmdb_id(title, media_type)
             if tmdb_id is not None:
                 add_to_radarr(tmdb_id, title)
+        elif media_type == "show":
+            tmdb_id = fetch_tmdb_id(title, media_type)
+            if tmdb_id is not None:
+                search_and_add_series(title)
         else:
             print(f"Unknown media type found: {media_type}")
 
