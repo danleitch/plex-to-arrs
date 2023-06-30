@@ -20,9 +20,6 @@ SONARR_ROOT_FOLDER = "/config"
 # Language Profile ID for Sonarr
 LANGUAGE_PROFILE = 1  # Adjust this value based on your Sonarr configuration
 
-
-
-
 def get_quality_profile_id():
     quality_profiles_url = f"{RADARR_URL}/qualityProfile?apikey={RADARR_API_KEY}"
     response = requests.get(quality_profiles_url)
@@ -85,6 +82,30 @@ def add_to_radarr(tmdb_id, title):
         except (KeyError, IndexError):
             print(f"Failed to add movie '{title}' to Radarr. Status Code: {response.status_code}")
 
+def add_to_sonarr(tmdb_id, title):
+    print(f"Adding series '{title}' to Sonarr...")
+    payload = {
+        "title": title,
+        "qualityProfileId": int(QUALITY_PROFILE),
+        "languageProfileId": int(LANGUAGE_PROFILE),
+        "tvdbId": tmdb_id,
+        "rootFolderPath": SONARR_ROOT_FOLDER,
+        "monitored": True,
+        "addOptions": {
+            "searchForMissingEpisodes": True
+        }
+    }
+    sonarr_add_url = f"{SONARR_URL}/series?apikey={SONARR_API_KEY}"
+    response = requests.post(sonarr_add_url, json=payload)
+    if response.status_code == 201:
+        print(f"Added series '{title}' to Sonarr successfully.")
+    else:
+        try:
+            error_message = response.json()[0]['errorMessage']
+            print(f"Failed to add series '{title}' to Sonarr. Error: {error_message}")
+        except (KeyError, IndexError):
+            print(f"Failed to add series '{title}' to Sonarr. Status Code: {response.status_code}")
+
 def search_and_add_series(search_term):
     search_url = f"{SONARR_URL}/series/lookup"
     headers = {"X-Api-Key": SONARR_API_KEY}
@@ -98,27 +119,30 @@ def search_and_add_series(search_term):
             series_id = series["tvdbId"]
             add_series_url = f"{SONARR_URL}/series"
             payload = {
-            "title": search_term,
-            "qualityProfileId": int(QUALITY_PROFILE),
-            "languageProfileId": int(LANGUAGE_PROFILE),  
-            "tvdbId": series_id,
-            "rootFolderPath": SONARR_ROOT_FOLDER,
-            "monitored": True,
-            "addOptions": {
-                "searchForMissingEpisodes": True
+                "title": series["title"],
+                "qualityProfileId": int(QUALITY_PROFILE),
+                "languageProfileId": int(LANGUAGE_PROFILE),
+                "tvdbId": series_id,
+                "rootFolderPath": SONARR_ROOT_FOLDER,
+                "monitored": True,
+                "addOptions": {
+                    "searchForMissingEpisodes": True
+                }
             }
-        }
             
             response = requests.post(add_series_url, headers=headers, json=payload)
             if response.status_code == 201:
                 print(f"Added series '{series['title']}' to Sonarr successfully.")
             else:
-                print(f"Failed to add series '{series['title']}' to Sonarr. ")
+                try:
+                    error_message = response.json()[0]['errorMessage']
+                    print(f"Failed to add series '{series['title']}' to Sonarr. Error: {error_message}")
+                except (KeyError, IndexError):
+                    print(f"Failed to add series '{series['title']}' to Sonarr. Status Code: {response.status_code}")
         else:
             print("No series found for the search term.")
     else:
         print("Failed to perform series search.")
-
 
 def main():
     print("Starting script...")
